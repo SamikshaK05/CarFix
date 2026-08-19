@@ -1,482 +1,272 @@
-# CarFix
-Car Repairing &amp; Services - Full Stack Web Application
-# 🚗 CarFix — Car Repairing & Services
+# CarFix – Car Repairing & Service Management System
 
-CarFix is a modern web application designed to make car servicing and vehicle maintenance easier and more convenient.
-
-The platform allows customers to explore car services, find service centers, manage their vehicles, book services, track bookings, view service history, and manage invoices.
-
-The project is being developed as a full-stack application using React, Node.js, Express.js, MongoDB, and related technologies.
+CarFix is an end-to-end, full-stack automotive service booking, vehicle management, and service center management platform built with React, Node.js, Express, and MongoDB.
 
 ---
 
-## 📌 Project Overview
+## Table of Contents
 
-CarFix aims to provide a centralized platform where customers can manage their vehicle servicing requirements from one place.
-
-### Main Goals
-
-* Find available car services
-* Explore service centers
-* Manage personal vehicles
-* Book car services
-* Track service bookings
-* View service history
-* Manage invoices
-* Submit reviews
-* Contact service providers
-* Provide an admin dashboard for managing the platform
-
----
-
-## ✨ Planned Features
-
-### 👤 Customer Features
-
-* User Registration
-* User Login
-* Customer Dashboard
-* Vehicle Management
-* Browse Car Services
-* Browse Service Centers
-* Service Booking
-* Booking Management
-* Service History
-* Invoice Management
-* Customer Profile
-* Reviews & Ratings
-* Contact Support
-* Notifications
-
-### 🛠️ Admin Features
-
-* Admin Dashboard
-* User Management
-* Vehicle Management
-* Service Management
-* Service Center Management
-* Booking Management
-* Invoice Management
-* Review Management
-* Contact Message Management
-* Platform Statistics
+- [Project Overview](#project-overview)
+- [Features by Role](#features-by-role)
+  - [Customer Portal](#customer-portal)
+  - [Service Manager Portal](#service-manager-portal)
+  - [Admin Portal](#admin-portal)
+  - [Mechanic Portal](#mechanic-portal)
+- [Tech Stack](#tech-stack)
+- [Architecture & Design](#architecture--design)
+- [Repository Structure](#repository-structure)
+- [Installation & Setup](#installation--setup)
+  - [Prerequisites](#prerequisites)
+  - [Backend Setup](#backend-setup)
+  - [Frontend Setup](#frontend-setup)
+- [Environment Variables](#environment-variables)
+- [Authentication & Role-Based Access Control](#authentication--role-based-access-control)
+- [API Overview](#api-overview)
+- [Automated Testing & Regression Suite](#automated-testing--regression-suite)
+- [Test Credentials](#test-credentials)
+- [Deployment Guidelines](#deployment-guidelines)
+- [Future Development Roadmap](#future-development-roadmap)
 
 ---
 
-## 🖥️ Current Frontend
+## Project Overview
 
-The current version focuses on building the React frontend and user interface.
-
-Implemented pages include:
-
-* Home
-* Services
-* About
-* Service Centers
-* Pricing
-* Contact
-* Login
-* Register
-* Forgot Password
-* Customer Dashboard
-* My Cars
-* Book Service
-* My Bookings
-* Service History
-* Invoices
-* Profile
-
-The current frontend uses sample data for demonstration.
-
-Backend integration will be added in the upcoming development phases.
+CarFix streamlines vehicle repair scheduling, service catalog browsing, mechanic dispatching, service progress tracking, and automated PDF invoice generation. The system provides role-tailored dashboards and secure endpoints for Customers, Service Managers, Mechanics, and Administrators.
 
 ---
 
-## 🛠️ Technology Stack
+## Features by Role
 
-### Frontend
+### Customer Portal
+- **Authentication**: Registration, Login, JWT authorization, Password Reset via email/token, Password Change.
+- **Vehicle Management**: Complete CRUD for customer vehicles (Make, Model, Year, Registration Number, Fuel Type, Color, Mileage) with customer ownership protection.
+- **Service Booking**: Interactive service selection, workshop center compatibility checks, date/time slot conflict protection, and database price tampering prevention.
+- **Booking Cancellation**: Cancel eligible pending/confirmed bookings.
+- **Service History**: Historical archive of completed services with vehicle mileage, invoice linkage, and PDF downloads.
+- **Invoices**: PDF invoice viewing & downloading with ownership protection.
+- **Reviews & Ratings**: Post, update, and delete reviews for service centers with automated rating aggregation.
+- **Service & Workshop Catalog**: Live search, category filtering, city filtering, and pricing details.
+- **Customer Dashboard**: Real-time metrics (Total Vehicles, Active Bookings, Completed Services, Pending Invoices) and recent activity feed.
 
-* React.js
-* Vite
-* JavaScript
-* React Router
-* CSS
-* Lucide React
+### Service Manager Portal
+- **Dashboard**: Real-time metrics for pending bookings, active queue (Confirmed + In Progress), completed services, and invoice stats.
+- **Bookings Queue**: Workshop-scoped queue displaying appointments strictly belonging to the manager's assigned service center.
+- **Mechanic Assignment**: Dispatch active technicians (`isActive !== false`) to bookings. Assigning a mechanic to a `PENDING` booking automatically confirms the appointment (`PENDING` $\rightarrow$ `CONFIRMED`).
+- **Status Lifecycle Progression**: Strict transition controls (`PENDING` $\rightarrow$ `CONFIRMED` $\rightarrow$ `IN_PROGRESS` $\rightarrow$ `COMPLETED`). Prevents invalid status skipping and locks completed/cancelled bookings.
+- **Auto Invoice Generation**: Transitioning a booking to `COMPLETED` automatically creates a customer invoice using database service prices with `paymentStatus: 'PENDING'`.
+- **Invoice PDF Download**: Instant invoice PDF download directly from the queue with loading states.
 
-### Backend
+### Admin Portal
+- **Dashboard**: System-wide statistics across users, vehicles, service centers, bookings, invoices, and reviews.
+- **User Management**: Filter, search, inspect, activate/deactivate, and edit user profiles across all roles (`CUSTOMER`, `SERVICE_MANAGER`, `MECHANIC`, `ADMIN`) with self-protection rules.
+- **Service & Center Management**: Full catalog and workshop center visibility.
 
-Planned:
-
-* Node.js
-* Express.js
-* REST APIs
-
-### Database
-
-Planned:
-
-* MongoDB
-* Mongoose
-
-### Authentication
-
-Planned:
-
-* JWT
-* bcrypt
-* Role-Based Access Control
-
-### Payment
-
-Planned:
-
-* Razorpay
-
-### Development Tools
-
-* Visual Studio Code
-* Git
-* GitHub
-* Antigravity
-* Postman / Thunder Client
+### Mechanic Portal
+- *Under Active Development* (Documented status: Job assignment listing and job status tracking endpoints prepared).
 
 ---
 
-## 📂 Project Structure
+## Tech Stack
 
-Current project structure:
+- **Frontend**: React 18, Vite 6, React Router DOM 6, Lucide React Icons, Vanilla CSS (Design Tokens & Responsive Layouts).
+- **Backend**: Node.js, Express.js, MongoDB Atlas / Mongoose ODM, JSON Web Tokens (JWT), BcryptJS, PDFKit (PDF generation).
+- **Tooling**: Dotenvx, Nodemon, Native ES Modules (`type: "module"`).
+
+---
+
+## Architecture & Design
 
 ```text
-CarFix/
-│
-├── frontend/
-│   ├── public/
-│   ├── src/
-│   │   ├── components/
-│   │   ├── pages/
-│   │   ├── data/
-│   │   └── ...
-│   │
-│   ├── package.json
-│   └── ...
-│
-├── .gitignore
-└── README.md
+┌─────────────────────────┐       HTTP / REST (JSON)       ┌─────────────────────────┐
+│     React 18 / Vite     │  ◄──────────────────────────►  │     Express.js API      │
+│   (Frontend Port 5173)  │  Authorization: Bearer <token> │   (Backend Port 5000)   │
+└─────────────────────────┘                                └────────────┬────────────┘
+                                                                        │
+                                                                 Mongoose ODM
+                                                                        │
+                                                                        ▼
+                                                           ┌─────────────────────────┐
+                                                           │      MongoDB Atlas      │
+                                                           └─────────────────────────┘
 ```
 
-The backend will be added later:
+---
+
+## Repository Structure
 
 ```text
 CarFix/
-│
-├── frontend/
-│
 ├── backend/
-│
-├── .gitignore
+│   ├── src/
+│   │   ├── config/         # Database connection & DNS resolution
+│   │   ├── controllers/    # Route handler logic & business rules
+│   │   ├── middleware/     # JWT protect & role authorize guards
+│   │   ├── models/         # Mongoose schemas (User, Booking, Invoice, etc.)
+│   │   ├── routes/         # Express REST API routes
+│   │   ├── services/       # Email & PDF generation services
+│   │   └── utils/          # Helper utilities
+│   ├── test_*.js           # Automated regression test suites (12 suites)
+│   ├── setup_test_*.js     # Database seeding & test setup scripts
+│   ├── .env.example        # Backend environment template
+│   ├── package.json
+│   └── server.js           # Server entry point
+├── frontend/
+│   ├── src/
+│   │   ├── api/            # Centralized API client wrappers
+│   │   ├── components/     # UI components & ProtectedRoute layout guards
+│   │   ├── layouts/        # Main, Customer, Admin, Manager, Mechanic layouts
+│   │   ├── pages/          # Public and role-based portal pages
+│   │   └── utils/          # Currency & date formatters
+│   ├── .env.example        # Frontend environment template
+│   ├── package.json
+│   └── vite.config.js
+├── docs/
+│   └── TEST_CREDENTIALS.md # Local development test credentials
 └── README.md
 ```
 
 ---
 
-## 🚀 Getting Started
+## Installation & Setup
 
 ### Prerequisites
+- Node.js (v18.x or higher)
+- npm (v9.x or higher)
+- MongoDB Atlas database instance or local MongoDB instance
 
-Make sure you have installed:
-
-* Node.js
-* npm
-* Git
-
-Check the versions:
+### Backend Setup
 
 ```bash
-node -v
-npm -v
-git --version
-```
+# 1. Navigate to backend directory
+cd backend
 
----
-
-## 📥 Installation
-
-Clone the repository:
-
-```bash
-git clone https://github.com/SamikshaK05/CarFix.git
-```
-
-Navigate into the project:
-
-```bash
-cd CarFix
-```
-
-Navigate to the frontend:
-
-```bash
-cd frontend
-```
-
-Install dependencies:
-
-```bash
+# 2. Install dependencies
 npm install
-```
 
----
+# 3. Create .env file from template
+cp .env.example .env
 
-## ▶️ Run the Frontend
+# 4. Configure .env variables (MONGODB_URI, JWT_SECRET, PORT)
 
-Start the development server:
+# 5. Seed test accounts & initial database records
+node setup_test_service_manager.js
 
-```bash
+# 6. Start development server
 npm run dev
 ```
 
-The application will normally be available at:
-
-```text
-http://localhost:5173
-```
-
----
-
-## 🏗️ Production Build
-
-To create a production build:
+### Frontend Setup
 
 ```bash
-npm run build
+# 1. Navigate to frontend directory
+cd ../frontend
+
+# 2. Install dependencies
+npm install
+
+# 3. Create .env file from template
+cp .env.example .env
+
+# 4. Start Vite development server
+npm run dev
 ```
 
-To preview the production build:
+---
+
+## Environment Variables
+
+### Backend (`backend/.env`)
+
+| Variable | Description | Default / Example |
+| :--- | :--- | :--- |
+| `PORT` | Express server port | `5000` |
+| `NODE_ENV` | Environment mode | `development` |
+| `CLIENT_URL` | Frontend origin URL for CORS | `http://localhost:5173` |
+| `MONGODB_URI` | MongoDB connection string | `mongodb+srv://...` |
+| `JWT_SECRET` | Secret key for JWT signing | `carfix_jwt_super_secret_key_2026_dev` |
+| `JWT_EXPIRES_IN` | JWT token validity duration | `7d` |
+
+### Frontend (`frontend/.env`)
+
+| Variable | Description | Default / Example |
+| :--- | :--- | :--- |
+| `VITE_API_URL` | Base API URL | `http://localhost:5000/api` |
+
+---
+
+## Authentication & Role-Based Access Control
+
+CarFix uses HTTP Bearer JWT Authentication (`Authorization: Bearer <token>`).
+
+Supported User Roles (`User.role`):
+1. **`CUSTOMER`**: Access to vehicle management, booking creation, service history, and personal invoices.
+2. **`SERVICE_MANAGER`**: Access to workshop-scoped booking queue, technician dispatching, status lifecycle updates, and auto invoices.
+3. **`MECHANIC`**: Access to assigned repair jobs and status updates.
+4. **`ADMIN`**: Full administrative access across all system collections and user accounts.
+
+---
+
+## Automated Testing & Regression Suite
+
+CarFix maintains a 100% passing automated regression suite across 13 dedicated test suites:
+
+```text
+==================================================
+   CARFIX REGRESSION TEST SUITE RESULTS
+==================================================
+
+ 1. test_password_reset.js              ==>  17 / 17  PASSED
+ 2. test_change_password.js             ==>   5 /  5  PASSED
+ 3. test_profile_update.js              ==>  12 / 12  PASSED
+ 4. test_invoice_download.js            ==>  11 / 11  PASSED
+ 5. test_service_booking.js             ==>  15 / 15  PASSED
+ 6. test_vehicle_management.js          ==>  20 / 20  PASSED
+ 7. test_booking_cancellation.js       ==>  16 / 16  PASSED
+ 8. test_service_history.js             ==>  19 / 19  PASSED
+ 9. test_customer_dashboard.js          ==>  20 / 20  PASSED
+10. test_service_centers_and_reviews.js ==>  27 / 27  PASSED
+11. test_services_catalog.js            ==>  28 / 28  PASSED
+12. test_service_manager_portal.js      ==>  19 / 19  PASSED
+13. test_mechanic_portal.js             ==>  15 / 15  PASSED
+--------------------------------------------------
+TOTAL REGRESSION TESTS                  : 224 / 224 PASSED (100%)
+```
+
+To run any test suite:
 
 ```bash
-npm run preview
+cd backend
+node test_service_manager_portal.js
 ```
 
 ---
 
-## 🔐 Environment Variables
+## Test Credentials
 
-Backend environment variables will be added when backend development begins.
+Refer to [`docs/TEST_CREDENTIALS.md`](docs/TEST_CREDENTIALS.md) for local test accounts:
 
-Sensitive information such as:
-
-* MongoDB connection strings
-* JWT secrets
-* API keys
-* Payment gateway keys
-
-will be stored in `.env` files and will not be committed to GitHub.
-
-Example:
-
-```env
-PORT=5000
-MONGODB_URI=your_mongodb_connection_string
-JWT_SECRET=your_jwt_secret
-```
-
-Never commit actual secrets to the repository.
+- **Service Manager**: `servicemanager.test@carfix.com` / `Manager123!`
+- **Customer**: `customer.test@carfix.com` / `Customer123!`
+- **Mechanic**: `mechanic.test@carfix.com` / `Mechanic123!`
 
 ---
 
-## 🗺️ Development Roadmap
+## Deployment Guidelines
 
-### Phase 1 — Frontend
-
-* [x] React + Vite setup
-* [x] Project structure
-* [x] Navigation
-* [x] Home page
-* [x] Services page
-* [x] About page
-* [x] Service Centers page
-* [x] Pricing page
-* [x] Contact page
-* [x] Authentication UI
-* [x] Customer Dashboard UI
-
-### Phase 2 — Backend
-
-* [ ] Node.js setup
-* [ ] Express.js setup
-* [ ] Backend project structure
-* [ ] MongoDB connection
-* [ ] Mongoose models
-* [ ] REST APIs
-* [ ] Error handling
-* [ ] API validation
-
-### Phase 3 — Authentication
-
-* [ ] User registration API
-* [ ] Login API
-* [ ] Password hashing
-* [ ] JWT authentication
-* [ ] Protected routes
-* [ ] Role-based authorization
-
-### Phase 4 — Core Features
-
-* [ ] Vehicle management
-* [ ] Service management
-* [ ] Service center management
-* [ ] Booking system
-* [ ] Booking status management
-* [ ] Service history
-* [ ] Invoice system
-
-### Phase 5 — Admin
-
-* [ ] Admin dashboard
-* [ ] User management
-* [ ] Service management
-* [ ] Service center management
-* [ ] Booking management
-* [ ] Invoice management
-* [ ] Review management
-
-### Phase 6 — Advanced Features
-
-* [ ] Payment gateway
-* [ ] Reviews & ratings
-* [ ] Notifications
-* [ ] Email notifications
-* [ ] Search and filtering
-* [ ] Advanced analytics
-
-### Phase 7 — Testing & Deployment
-
-* [ ] Frontend testing
-* [ ] API testing
-* [ ] Security improvements
-* [ ] Production configuration
-* [ ] Frontend deployment
-* [ ] Backend deployment
-* [ ] Database deployment
+1. **Frontend Deployment** (Vercel / Netlify):
+   - Set build command: `npm run build`
+   - Set output directory: `dist`
+   - Configure environment variable: `VITE_API_URL=https://api.yourdomain.com/api`
+2. **Backend Deployment** (Render / Railway / AWS):
+   - Set start command: `node server.js`
+   - Configure environment variables (`MONGODB_URI`, `JWT_SECRET`, `CLIENT_URL`)
+   - Ensure MongoDB Atlas IP Whitelist includes deployment server IPs or `0.0.0.0/0`.
 
 ---
 
-## 🔄 Application Flow
+## Future Development Roadmap
 
-The planned application flow is:
-
-```text
-Customer
-   │
-   ▼
-CarFix Website
-   │
-   ├── Explore Services
-   ├── Find Service Center
-   ├── Register / Login
-   │
-   ▼
-Customer Dashboard
-   │
-   ├── Manage Vehicles
-   ├── Book Service
-   ├── Track Booking
-   ├── View Service History
-   ├── View Invoices
-   └── Manage Profile
-   │
-   ▼
-Backend API
-   │
-   ▼
-MongoDB
-```
-
-Admin flow:
-
-```text
-Admin
-   │
-   ▼
-Admin Dashboard
-   │
-   ├── Manage Users
-   ├── Manage Services
-   ├── Manage Centers
-   ├── Manage Bookings
-   ├── Manage Invoices
-   └── Manage Reviews
-   │
-   ▼
-Backend API
-   │
-   ▼
-MongoDB
-```
-
----
-
-## 🧪 Testing
-
-The application will be tested at different stages using:
-
-* Browser testing
-* Responsive testing
-* API testing
-* Form validation testing
-* Authentication testing
-* Database testing
-* End-to-end testing
-
-API testing will be performed using Postman or Thunder Client.
-
----
-
-## 🔒 Security
-
-Security considerations planned for the application include:
-
-* Password hashing
-* JWT authentication
-* Protected API routes
-* Role-based access control
-* Input validation
-* Environment variables
-* CORS configuration
-* Rate limiting
-* Secure HTTP headers
-* Proper error handling
-
----
-
-## 📈 Future Improvements
-
-Future versions may include:
-
-* Real-time booking status
-* Online payment
-* GPS/service center location
-* Mechanic assignment
-* Vehicle service reminders
-* Email and SMS notifications
-* Service recommendations
-* Customer analytics
-* Admin analytics
-* Mobile application
-
----
-
-## 👩‍💻 Developer
-
-**Samiksha K**
-
-GitHub:
-
-https://github.com/SamikshaK05
-
----
-
-## 📄 License
-
-This project is currently being developed for educational and portfolio purposes.
-
+1. **Mechanic Portal Frontend & Backend Integration**:
+   - Mechanic job queue, diagnosis notes logging, parts usage tracking, and completion sign-off.
+2. **Real-time Notifications**:
+   - Socket.io or Web Push notifications for booking status changes.

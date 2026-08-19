@@ -1,10 +1,14 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { UserPlus, CheckCircle2, AlertCircle } from 'lucide-react';
 import AuthLayout from '../components/AuthLayout';
 import PasswordInput from '../components/PasswordInput';
+import { useAuth } from '../context/AuthContext';
 
 export default function Register() {
+  const { register } = useAuth();
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -15,7 +19,9 @@ export default function Register() {
   });
 
   const [errors, setErrors] = useState({});
-  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [apiError, setApiError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Password strength score calculation
   const getPasswordStrength = (pass) => {
@@ -102,8 +108,10 @@ export default function Register() {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setApiError('');
+    setSuccessMsg('');
 
     const nameErr = validateField('fullName', formData.fullName);
     const emailErr = validateField('email', formData.email);
@@ -125,20 +133,33 @@ export default function Register() {
 
     if (hasErrors) {
       setErrors(activeErrors);
-      setIsSubmitted(false);
       return;
     }
 
     setErrors({});
-    setIsSubmitted(true);
-    setFormData({
-      fullName: '',
-      email: '',
-      phone: '',
-      password: '',
-      confirmPassword: '',
-      agreeTerms: false,
-    });
+    setIsSubmitting(true);
+
+    try {
+      const response = await register({
+        name: formData.fullName.trim(),
+        email: formData.email.trim(),
+        phone: formData.phone.trim(),
+        password: formData.password,
+        role: 'CUSTOMER',
+      });
+
+      if (response && response.success) {
+        setSuccessMsg('Account created successfully! Redirecting to sign in...');
+        setTimeout(() => {
+          navigate('/login', { replace: true });
+        }, 1500);
+      }
+    } catch (err) {
+      const errorMsg = err.data?.message || err.message || 'Registration failed. Please check your details.';
+      setApiError(errorMsg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -151,12 +172,21 @@ export default function Register() {
           </p>
         </div>
 
-        {isSubmitted && (
+        {successMsg && (
           <div className="form-success-banner" role="status" style={{ marginBottom: '1.25rem' }}>
             <CheckCircle2 size={22} className="success-icon" />
             <div className="success-content">
-              <h4>Demo Registration Successful</h4>
-              <p>Account form submitted successfully. Backend registration will be connected later.</p>
+              <h4>Registration Successful</h4>
+              <p>{successMsg}</p>
+            </div>
+          </div>
+        )}
+
+        {apiError && (
+          <div className="pricing-alert-box" style={{ marginBottom: '1.25rem', padding: '1rem', borderColor: 'rgba(239, 68, 68, 0.4)', backgroundColor: 'rgba(239, 68, 68, 0.08)' }}>
+            <AlertCircle size={20} className="alert-icon" style={{ color: '#ef4444' }} />
+            <div className="alert-text">
+              <p style={{ color: '#ef4444', fontWeight: 500 }}>{apiError}</p>
             </div>
           </div>
         )}
@@ -175,6 +205,7 @@ export default function Register() {
               placeholder="Enter your full name"
               value={formData.fullName}
               onChange={handleChange}
+              disabled={isSubmitting}
               autoComplete="name"
               aria-invalid={errors.fullName ? 'true' : 'false'}
               aria-describedby={errors.fullName ? 'fullName-error' : undefined}
@@ -200,6 +231,7 @@ export default function Register() {
               placeholder="Enter your email address"
               value={formData.email}
               onChange={handleChange}
+              disabled={isSubmitting}
               autoComplete="email"
               aria-invalid={errors.email ? 'true' : 'false'}
               aria-describedby={errors.email ? 'email-error' : undefined}
@@ -225,6 +257,7 @@ export default function Register() {
               placeholder="Enter your phone number"
               value={formData.phone}
               onChange={handleChange}
+              disabled={isSubmitting}
               autoComplete="tel"
               aria-invalid={errors.phone ? 'true' : 'false'}
               aria-describedby={errors.phone ? 'phone-error' : undefined}
@@ -245,6 +278,7 @@ export default function Register() {
             placeholder="Create a password"
             value={formData.password}
             onChange={handleChange}
+            disabled={isSubmitting}
             autoComplete="new-password"
             error={errors.password}
           />
@@ -281,6 +315,7 @@ export default function Register() {
             placeholder="Re-enter your password"
             value={formData.confirmPassword}
             onChange={handleChange}
+            disabled={isSubmitting}
             autoComplete="new-password"
             error={errors.confirmPassword}
           />
@@ -293,6 +328,7 @@ export default function Register() {
                 name="agreeTerms"
                 checked={formData.agreeTerms}
                 onChange={handleChange}
+                disabled={isSubmitting}
                 style={{ marginTop: '0.2rem', cursor: 'pointer', accentColor: 'var(--primary-accent)' }}
               />
               <span>
@@ -316,9 +352,9 @@ export default function Register() {
           </div>
 
           {/* Submit Button */}
-          <button type="submit" className="btn-submit-form" style={{ width: '100%' }}>
+          <button type="submit" className="btn-submit-form" style={{ width: '100%' }} disabled={isSubmitting}>
             <UserPlus size={18} />
-            Create Account
+            {isSubmitting ? 'Creating Account...' : 'Create Account'}
           </button>
         </form>
 

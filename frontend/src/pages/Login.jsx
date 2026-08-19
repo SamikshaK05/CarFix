@@ -1,10 +1,15 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { LogIn, CheckCircle2, AlertCircle, Info } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { LogIn, AlertCircle, Info } from 'lucide-react';
 import AuthLayout from '../components/AuthLayout';
 import PasswordInput from '../components/PasswordInput';
+import { useAuth } from '../context/AuthContext';
+import { getDashboardPath } from '../components/ProtectedRoute';
 
 export default function Login() {
+  const { login } = useAuth();
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -12,7 +17,8 @@ export default function Login() {
   });
 
   const [errors, setErrors] = useState({});
-  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [apiError, setApiError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [googleMsg, setGoogleMsg] = useState(false);
 
   const validateField = (name, value) => {
@@ -50,25 +56,37 @@ export default function Login() {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setGoogleMsg(false);
+    setApiError('');
 
     const emailErr = validateField('email', formData.email);
     const passErr = validateField('password', formData.password);
 
     if (emailErr || passErr) {
       setErrors({ email: emailErr, password: passErr });
-      setIsSubmitted(false);
       return;
     }
 
     setErrors({});
-    setIsSubmitted(true);
+    setIsSubmitting(true);
+
+    try {
+      const response = await login(formData.email, formData.password);
+      const loggedInUser = response.data?.user || response.user;
+      const role = loggedInUser?.role || 'CUSTOMER';
+      const redirectPath = getDashboardPath(role);
+      navigate(redirectPath, { replace: true });
+    } catch (err) {
+      const errorMsg = err.data?.message || err.message || 'Login failed. Please check your credentials.';
+      setApiError(errorMsg);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleGoogleAuth = () => {
-    setIsSubmitted(false);
     setGoogleMsg(true);
   };
 
@@ -82,12 +100,11 @@ export default function Login() {
           </p>
         </div>
 
-        {isSubmitted && (
-          <div className="form-success-banner" role="status" style={{ marginBottom: '1.25rem' }}>
-            <CheckCircle2 size={22} className="success-icon" />
-            <div className="success-content">
-              <h4>Demo Sign In</h4>
-              <p>Login form submitted successfully. Backend authentication will be connected later.</p>
+        {apiError && (
+          <div className="pricing-alert-box" style={{ marginBottom: '1.25rem', padding: '1rem', borderColor: 'rgba(239, 68, 68, 0.4)', backgroundColor: 'rgba(239, 68, 68, 0.08)' }}>
+            <AlertCircle size={20} className="alert-icon" style={{ color: '#ef4444' }} />
+            <div className="alert-text">
+              <p style={{ color: '#ef4444', fontWeight: 500 }}>{apiError}</p>
             </div>
           </div>
         )}
@@ -115,6 +132,7 @@ export default function Login() {
               placeholder="Enter your email address"
               value={formData.email}
               onChange={handleChange}
+              disabled={isSubmitting}
               autoComplete="email"
               aria-invalid={errors.email ? 'true' : 'false'}
               aria-describedby={errors.email ? 'email-error' : undefined}
@@ -135,6 +153,7 @@ export default function Login() {
             placeholder="Enter your password"
             value={formData.password}
             onChange={handleChange}
+            disabled={isSubmitting}
             autoComplete="current-password"
             error={errors.password}
           />
@@ -155,6 +174,7 @@ export default function Login() {
                 name="rememberMe"
                 checked={formData.rememberMe}
                 onChange={handleChange}
+                disabled={isSubmitting}
                 style={{ cursor: 'pointer', accentColor: 'var(--primary-accent)' }}
               />
               Remember me
@@ -165,9 +185,9 @@ export default function Login() {
           </div>
 
           {/* Submit Button */}
-          <button type="submit" className="btn-submit-form" style={{ width: '100%' }}>
+          <button type="submit" className="btn-submit-form" style={{ width: '100%' }} disabled={isSubmitting}>
             <LogIn size={18} />
-            Sign In
+            {isSubmitting ? 'Signing In...' : 'Sign In'}
           </button>
         </form>
 
@@ -176,7 +196,7 @@ export default function Login() {
           <span>OR</span>
         </div>
 
-        <button type="button" className="btn-google-auth" onClick={handleGoogleAuth}>
+        <button type="button" className="btn-google-auth" onClick={handleGoogleAuth} disabled={isSubmitting}>
           <svg width="18" height="18" viewBox="0 0 24 24">
             <path
               fill="#4285F4"

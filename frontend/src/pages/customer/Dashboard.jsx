@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Car,
@@ -9,35 +10,99 @@ import {
   CalendarPlus,
   History,
   ArrowRight,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
-import {
-  INITIAL_STATS,
-  INITIAL_UPCOMING_SERVICE,
-  INITIAL_SERVICE_HISTORY,
-} from '../../data/customerData';
+
+import { getCustomerDashboard } from '../../api/customer.api';
+import { useAuth } from '../../context/AuthContext';
 
 export default function Dashboard() {
+  const { user: authUser } = useAuth();
+  const [dashData, setDashData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await getCustomerDashboard();
+      if (response && response.success && response.data) {
+        setDashData(response.data);
+      } else {
+        throw new Error('Failed to parse dashboard data');
+      }
+    } catch (err) {
+      console.error('Error fetching customer dashboard:', err.message);
+      setError(err.data?.message || err.message || 'Failed to load dashboard data. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  // Determine greeting based on current time
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  };
+
+  if (loading) {
+    return (
+      <div style={{ padding: '4rem 2rem', textAlign: 'center', backgroundColor: 'var(--white)', borderRadius: '16px', border: '1px solid var(--border-color)' }}>
+        <Loader2 size={40} className="spinning-loader" style={{ animation: 'spin 1s linear infinite', color: 'var(--primary-accent)' }} />
+        <h3 style={{ marginTop: '1rem', color: 'var(--primary-dark)' }}>Loading Customer Dashboard...</h3>
+        <p style={{ color: 'var(--text-secondary)', marginTop: '0.3rem' }}>Fetching live vehicle metrics and service history</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{ padding: '3rem 2rem', textAlign: 'center', backgroundColor: 'var(--white)', borderRadius: '16px', border: '1px solid var(--border-color)' }}>
+        <AlertCircle size={40} style={{ color: '#ef4444', marginBottom: '0.8rem' }} />
+        <h3 style={{ color: 'var(--primary-dark)', marginBottom: '0.5rem' }}>Failed to Load Dashboard</h3>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: '1.2rem' }}>{error}</p>
+        <button type="button" className="btn-card-primary" onClick={fetchDashboardData}>
+          Try Again
+        </button>
+      </div>
+    );
+  }
+
+  const userProfile = dashData?.user || authUser || {};
+  const stats = dashData?.stats || {};
+  const upcomingList = dashData?.upcomingBookings || [];
+  const recentBookings = dashData?.recentBookings || [];
+  const firstUpcoming = upcomingList.length > 0 ? upcomingList[0] : null;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       {/* GREETING HEADER */}
       <div>
         <h1 style={{ fontSize: '2rem', fontWeight: '800', color: 'var(--primary-dark)', marginBottom: '0.3rem' }}>
-          Good Morning, Samiksha
+          {getGreeting()}, {userProfile.name || 'Valued Customer'}
         </h1>
         <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem' }}>
-          Here's an overview of your vehicle care.
+          Here's a live overview of your vehicles, bookings, and invoices.
         </p>
       </div>
 
       {/* STATS CARDS GRID */}
-      <div className="dashboard-stats-grid">
+      <div className="dashboard-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem' }}>
         <div className="info-card" style={{ flexDirection: 'row', alignItems: 'center' }}>
           <div className="info-icon-wrapper">
             <Car size={24} />
           </div>
           <div>
             <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '600' }}>My Cars</span>
-            <h3 style={{ fontSize: '1.8rem', fontWeight: '800', color: 'var(--primary-dark)' }}>{INITIAL_STATS.myCars}</h3>
+            <h3 style={{ fontSize: '1.8rem', fontWeight: '800', color: 'var(--primary-dark)' }}>{stats.totalVehicles ?? dashData?.totalVehicles ?? 0}</h3>
           </div>
         </div>
 
@@ -46,8 +111,8 @@ export default function Dashboard() {
             <Calendar size={24} />
           </div>
           <div>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '600' }}>Upcoming Services</span>
-            <h3 style={{ fontSize: '1.8rem', fontWeight: '800', color: 'var(--primary-dark)' }}>{INITIAL_STATS.upcomingServices}</h3>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '600' }}>Active Bookings</span>
+            <h3 style={{ fontSize: '1.8rem', fontWeight: '800', color: 'var(--primary-dark)' }}>{stats.activeBookings ?? dashData?.activeBookings ?? 0}</h3>
           </div>
         </div>
 
@@ -57,7 +122,7 @@ export default function Dashboard() {
           </div>
           <div>
             <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '600' }}>Completed Services</span>
-            <h3 style={{ fontSize: '1.8rem', fontWeight: '800', color: 'var(--primary-dark)' }}>{INITIAL_STATS.completedServices}</h3>
+            <h3 style={{ fontSize: '1.8rem', fontWeight: '800', color: 'var(--primary-dark)' }}>{stats.completedServices ?? stats.completedBookings ?? dashData?.completedServices ?? 0}</h3>
           </div>
         </div>
 
@@ -67,7 +132,9 @@ export default function Dashboard() {
           </div>
           <div>
             <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '600' }}>Pending Invoices</span>
-            <h3 style={{ fontSize: '1.8rem', fontWeight: '800', color: 'var(--primary-dark)' }}>{INITIAL_STATS.pendingInvoices}</h3>
+            <h3 style={{ fontSize: '1.8rem', fontWeight: '800', color: stats.pendingInvoices > 0 ? '#ef4444' : 'var(--primary-dark)' }}>
+              {stats.pendingInvoices ?? dashData?.pendingInvoices ?? 0}
+            </h3>
           </div>
         </div>
       </div>
@@ -89,49 +156,68 @@ export default function Dashboard() {
           <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--primary-dark)' }}>
             Upcoming Service
           </h3>
-          <span className="status-badge">
-            <span className="status-dot"></span>
-            {INITIAL_UPCOMING_SERVICE.status}
-          </span>
+          {firstUpcoming && (
+            <span className="status-badge">
+              <span className="status-dot"></span>
+              {firstUpcoming.status}
+            </span>
+          )}
         </div>
 
-        <div className="upcoming-details-grid">
-          <div>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block' }}>Vehicle</span>
-            <strong style={{ fontSize: '1rem', color: 'var(--primary-dark)' }}>{INITIAL_UPCOMING_SERVICE.vehicle}</strong>
-            <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'block' }}>({INITIAL_UPCOMING_SERVICE.registration})</span>
-          </div>
+        {firstUpcoming ? (
+          <>
+            <div className="upcoming-details-grid">
+              <div>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block' }}>Vehicle</span>
+                <strong style={{ fontSize: '1rem', color: 'var(--primary-dark)' }}>
+                  {firstUpcoming.vehicle ? `${firstUpcoming.vehicle.make} ${firstUpcoming.vehicle.model}` : 'Registered Vehicle'}
+                </strong>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'block' }}>
+                  ({firstUpcoming.vehicle?.registrationNumber || 'N/A'})
+                </span>
+              </div>
 
-          <div>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block' }}>Service</span>
-            <strong style={{ fontSize: '1rem', color: 'var(--primary-dark)' }}>{INITIAL_UPCOMING_SERVICE.service}</strong>
-          </div>
+              <div>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block' }}>Service</span>
+                <strong style={{ fontSize: '1rem', color: 'var(--primary-dark)' }}>
+                  {firstUpcoming.service?.name || 'General Service'}
+                </strong>
+              </div>
 
-          <div>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block' }}>Service Center</span>
-            <strong style={{ fontSize: '0.95rem', color: 'var(--primary-dark)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-              <MapPin size={14} color="var(--primary-accent)" />
-              {INITIAL_UPCOMING_SERVICE.serviceCenter}
-            </strong>
-          </div>
+              <div>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block' }}>Service Center</span>
+                <strong style={{ fontSize: '0.95rem', color: 'var(--primary-dark)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                  <MapPin size={14} color="var(--primary-accent)" />
+                  {firstUpcoming.serviceCenter?.name || 'CarFix Workshop'}
+                </strong>
+              </div>
 
-          <div>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block' }}>Date & Time</span>
-            <strong style={{ fontSize: '0.95rem', color: 'var(--primary-dark)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-              <Clock size={14} color="var(--primary-accent)" />
-              {INITIAL_UPCOMING_SERVICE.date} at {INITIAL_UPCOMING_SERVICE.time}
-            </strong>
-          </div>
-        </div>
+              <div>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block' }}>Date & Time</span>
+                <strong style={{ fontSize: '0.95rem', color: 'var(--primary-dark)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                  <Clock size={14} color="var(--primary-accent)" />
+                  {new Date(firstUpcoming.bookingDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} at {firstUpcoming.bookingTime}
+                </strong>
+              </div>
+            </div>
 
-        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-          <button type="button" className="btn-card-secondary" onClick={() => alert('View Details UI Modal: Appointment ID UP-2026-01.')}>
-            View Details
-          </button>
-          <button type="button" className="btn-card-primary" onClick={() => alert('Reschedule UI: Rescheduling functionality will connect to backend API.')}>
-            Reschedule
-          </button>
-        </div>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+              <Link to="/customer/bookings" className="btn-card-secondary" style={{ textDecoration: 'none' }}>
+                View All Bookings
+              </Link>
+              <Link to="/customer/book-service" className="btn-card-primary" style={{ textDecoration: 'none' }}>
+                Book Another Service
+              </Link>
+            </div>
+          </>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '1.5rem 1rem', color: 'var(--text-secondary)' }}>
+            <p style={{ marginBottom: '1rem', fontSize: '0.95rem' }}>No upcoming services scheduled right now.</p>
+            <Link to="/customer/book-service" className="btn-card-primary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+              <CalendarPlus size={18} /> Schedule Service Now
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* RECENT SERVICE HISTORY TABLE */}
@@ -153,35 +239,46 @@ export default function Dashboard() {
           </Link>
         </div>
 
-        <div className="table-responsive-container" style={{ border: 'none', boxShadow: 'none' }}>
-          <table className="comparison-table">
-            <thead>
-              <tr>
-                <th>Vehicle</th>
-                <th>Service</th>
-                <th>Date</th>
-                <th>Amount</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {INITIAL_SERVICE_HISTORY.map((row) => (
-                <tr key={row.id}>
-                  <td className="feature-name">{row.vehicle}</td>
-                  <td>{row.service}</td>
-                  <td>{row.date}</td>
-                  <td style={{ fontWeight: '700' }}>{row.amount}</td>
-                  <td>
-                    <span className="status-badge" style={{ display: 'inline-flex' }}>
-                      <span className="status-dot"></span>
-                      {row.status}
-                    </span>
-                  </td>
+        {recentBookings.length > 0 ? (
+          <div className="table-responsive-container" style={{ border: 'none', boxShadow: 'none' }}>
+            <table className="comparison-table">
+              <thead>
+                <tr>
+                  <th>Vehicle</th>
+                  <th>Service</th>
+                  <th>Date</th>
+                  <th>Amount</th>
+                  <th>Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {recentBookings.map((row) => (
+                  <tr key={row._id || row.id}>
+                    <td className="feature-name">
+                      {row.vehicle ? `${row.vehicle.make} ${row.vehicle.model}` : 'Vehicle'}
+                      <span style={{ display: 'block', fontSize: '0.78rem', color: 'var(--text-secondary)', fontWeight: 'normal' }}>
+                        {row.vehicle?.registrationNumber || ''}
+                      </span>
+                    </td>
+                    <td>{row.service?.name || 'Service'}</td>
+                    <td>{new Date(row.bookingDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
+                    <td style={{ fontWeight: '700' }}>₹{row.amount}</td>
+                    <td>
+                      <span className="status-badge" style={{ display: 'inline-flex' }}>
+                        <span className="status-dot"></span>
+                        {row.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '1.5rem 1rem', color: 'var(--text-secondary)' }}>
+            <p>No previous service history recorded yet.</p>
+          </div>
+        )}
       </div>
 
       {/* QUICK ACTIONS */}
@@ -190,7 +287,6 @@ export default function Dashboard() {
           Quick Actions
         </h3>
         <div className="quick-actions-grid">
-
           <div className="support-card">
             <div>
               <div className="support-icon">

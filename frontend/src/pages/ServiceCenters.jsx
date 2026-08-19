@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   MapPin,
@@ -9,82 +9,50 @@ import {
   FileText,
   ArrowRight,
   Map,
+  AlertCircle,
+  Loader2,
 } from 'lucide-react';
 
 import ServiceCenterCard from '../components/ServiceCenterCard';
+import { getServiceCenters } from '../api/serviceCenters.api';
 import './ServiceCenters.css';
-
-const CENTERS_DATA = [
-  {
-    id: 'pune-baner',
-    name: 'CarFix Pune – Baner',
-    city: 'Pune',
-    location: 'Baner, Pune',
-    rating: 4.8,
-    reviews: 124,
-    hours: '9:00 AM – 8:00 PM',
-    status: 'Open Now',
-    services: ['General Service', 'Oil Change', 'Brake Service', 'AC Service', 'Car Diagnostics'],
-  },
-  {
-    id: 'pune-kharadi',
-    name: 'CarFix Pune – Kharadi',
-    city: 'Pune',
-    location: 'Kharadi, Pune',
-    rating: 4.7,
-    reviews: 98,
-    hours: '9:00 AM – 8:00 PM',
-    status: 'Open Now',
-    services: ['General Service', 'Engine Repair', 'Battery Replacement', 'Wheel Alignment', 'Car Diagnostics'],
-  },
-  {
-    id: 'pune-wakad',
-    name: 'CarFix Pune – Wakad',
-    city: 'Pune',
-    location: 'Wakad, Pune',
-    rating: 4.6,
-    reviews: 87,
-    hours: '8:30 AM – 8:00 PM',
-    status: 'Open Now',
-    services: ['General Service', 'Oil Change', 'Tyre Service', 'AC Service', 'Detailing'],
-  },
-  {
-    id: 'mumbai-andheri',
-    name: 'CarFix Mumbai – Andheri',
-    city: 'Mumbai',
-    location: 'Andheri, Mumbai',
-    rating: 4.7,
-    reviews: 156,
-    hours: '9:00 AM – 9:00 PM',
-    status: 'Open Now',
-    services: ['General Service', 'Brake Service', 'Engine Repair', 'AC Service', 'Dent & Paint'],
-  },
-  {
-    id: 'bengaluru-whitefield',
-    name: 'CarFix Bengaluru – Whitefield',
-    city: 'Bengaluru',
-    location: 'Whitefield, Bengaluru',
-    rating: 4.8,
-    reviews: 113,
-    hours: '9:00 AM – 8:00 PM',
-    status: 'Open Now',
-    services: ['General Service', 'Diagnostics', 'Battery Replacement', 'Wheel Alignment', 'Detailing'],
-  },
-];
 
 const CATEGORIES = ['All Services', 'Maintenance', 'Repair', 'Diagnostics', 'Body & Detailing'];
 
 export default function ServiceCenters() {
+  const [centers, setCenters] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All Services');
+
+  const fetchCentersData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await getServiceCenters();
+      const rawData = response.data || response;
+      const apiList = Array.isArray(rawData) ? rawData : [];
+      setCenters(apiList);
+    } catch (err) {
+      console.error('Error fetching service centers:', err.message);
+      setError(err.data?.message || err.message || 'Failed to load service centers. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCentersData();
+  }, []);
 
   const matchesCategory = (centerServices, category) => {
     if (category === 'All Services') return true;
 
-    const maintenanceTags = ['General Service', 'Oil Change', 'AC Service', 'Battery Replacement', 'Wheel Alignment', 'Tyre Service'];
-    const repairTags = ['Engine Repair', 'Brake Service', 'Suspension Repair'];
-    const diagTags = ['Car Diagnostics', 'Diagnostics'];
-    const bodyTags = ['Detailing', 'Dent & Paint'];
+    const maintenanceTags = ['General Service', 'Oil Change', 'AC Service', 'Battery Replacement', 'Wheel Alignment', 'Tyre Service', 'Maintenance'];
+    const repairTags = ['Engine Repair', 'Brake Service', 'Suspension Repair', 'Transmission Service', 'Repair'];
+    const diagTags = ['Car Diagnostics', 'Diagnostics', 'Engine Diagnostics'];
+    const bodyTags = ['Detailing', 'Dent & Paint', 'Car Detailing', 'Body & Detailing'];
 
     let targetTags = [];
     if (category === 'Maintenance') targetTags = maintenanceTags;
@@ -92,20 +60,36 @@ export default function ServiceCenters() {
     else if (category === 'Diagnostics') targetTags = diagTags;
     else if (category === 'Body & Detailing') targetTags = bodyTags;
 
-    return centerServices.some((srv) => targetTags.includes(srv));
+    return centerServices.some((srv) => {
+      const srvName = typeof srv === 'string' ? srv : srv?.name || '';
+      return targetTags.some((t) => srvName.toLowerCase().includes(t.toLowerCase()));
+    });
   };
 
   const matchesSearch = (center, term) => {
     if (!term.trim()) return true;
     const lower = term.toLowerCase();
-    return (
-      center.name.toLowerCase().includes(lower) ||
-      center.city.toLowerCase().includes(lower) ||
-      center.location.toLowerCase().includes(lower)
-    );
+    const cName = (center.name || '').toLowerCase();
+    const cCity = (center.city || '').toLowerCase();
+    const cAddress = (center.address || center.location || '').toLowerCase();
+    return cName.includes(lower) || cCity.includes(lower) || cAddress.includes(lower);
   };
 
-  const filteredCenters = CENTERS_DATA.filter(
+  const normalizedCenters = centers.map((c) => ({
+    id: c._id || c.id,
+    name: c.name,
+    city: c.city || '',
+    location: c.address || c.location || `${c.city || ''} Center`,
+    rating: typeof c.rating === 'number' ? c.rating : 0,
+    reviews: typeof c.totalReviews === 'number' ? c.totalReviews : 0,
+    hours: c.openingHours || '9:00 AM – 8:00 PM',
+    status: c.isActive !== false ? 'Open Now' : 'Closed',
+    services: Array.isArray(c.services)
+      ? c.services.map((s) => (typeof s === 'object' ? s.name || 'General Service' : s))
+      : ['General Service', 'Oil Change', 'Brake Service'],
+  }));
+
+  const filteredCenters = normalizedCenters.filter(
     (c) => matchesSearch(c, searchTerm) && matchesCategory(c.services, selectedCategory)
   );
 
@@ -181,7 +165,21 @@ export default function ServiceCenters() {
 
       {/* SECTION 3 & 5 — SERVICE CENTER GRID */}
       <section className="centers-grid">
-        {filteredCenters.length > 0 ? (
+        {loading ? (
+          <div style={{ padding: '4rem 2rem', textAlign: 'center', width: '100%', gridColumn: '1 / -1' }}>
+            <Loader2 size={36} className="spinning-loader" style={{ animation: 'spin 1s linear infinite', color: 'var(--primary-accent)' }} />
+            <p style={{ marginTop: '1rem', color: 'var(--text-secondary)' }}>Loading service centers...</p>
+          </div>
+        ) : error ? (
+          <div style={{ padding: '3rem 2rem', textAlign: 'center', width: '100%', gridColumn: '1 / -1' }}>
+            <AlertCircle size={36} style={{ color: '#ef4444', marginBottom: '0.8rem' }} />
+            <h3 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem' }}>Failed to Load Service Centers</h3>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '1.2rem' }}>{error}</p>
+            <button type="button" className="btn-search" onClick={fetchCentersData}>
+              Try Again
+            </button>
+          </div>
+        ) : filteredCenters.length > 0 ? (
           filteredCenters.map((center) => <ServiceCenterCard key={center.id} center={center} />)
         ) : (
           <div className="no-centers-found">

@@ -2,11 +2,14 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { KeyRound, CheckCircle2, AlertCircle, ArrowLeft } from 'lucide-react';
 import AuthLayout from '../components/AuthLayout';
+import { forgotPassword } from '../api/auth.api';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   const validate = (val) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -19,7 +22,7 @@ export default function ForgotPassword() {
     return '';
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const err = validate(email);
     if (err) {
@@ -29,7 +32,22 @@ export default function ForgotPassword() {
     }
 
     setError('');
-    setIsSubmitted(true);
+    setIsSubmitting(true);
+
+    const genericMsg = 'If an account with that email exists, a password reset link has been sent.';
+
+    try {
+      const response = await forgotPassword(email.trim());
+      setSuccessMessage(response?.message || genericMsg);
+      setIsSubmitted(true);
+    } catch (apiErr) {
+      // Account Enumeration Defense: Always display standard generic success message
+      console.warn('Forgot password request completed:', apiErr.message);
+      setSuccessMessage(genericMsg);
+      setIsSubmitted(true);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -47,7 +65,7 @@ export default function ForgotPassword() {
             <CheckCircle2 size={22} className="success-icon" />
             <div className="success-content">
               <h4>Reset Request Submitted</h4>
-              <p>Password reset functionality will be connected to the backend later.</p>
+              <p>{successMessage}</p>
             </div>
           </div>
         )}
@@ -68,6 +86,7 @@ export default function ForgotPassword() {
                 setEmail(e.target.value);
                 if (error) setError(validate(e.target.value));
               }}
+              disabled={isSubmitting}
               autoComplete="email"
               aria-invalid={error ? 'true' : 'false'}
               aria-describedby={error ? 'email-error' : undefined}
@@ -80,9 +99,9 @@ export default function ForgotPassword() {
             )}
           </div>
 
-          <button type="submit" className="btn-submit-form" style={{ width: '100%' }}>
+          <button type="submit" className="btn-submit-form" style={{ width: '100%' }} disabled={isSubmitting}>
             <KeyRound size={18} />
-            Send Reset Link
+            {isSubmitting ? 'Sending Link...' : 'Send Reset Link'}
           </button>
         </form>
 

@@ -1,0 +1,27 @@
+# Root .gitignore for CarFix Project
+
+# Dependencies
+node_modules/
+
+# Environment Variables & Secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Build Outputs
+dist/
+build/
+coverage/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS & Editor Files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

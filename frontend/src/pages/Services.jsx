@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Wrench,
@@ -17,137 +17,88 @@ import {
   Shield,
   Clock,
   ArrowRight,
+  AlertCircle,
+  Loader2,
 } from 'lucide-react';
 
 import ServiceCard from '../components/ServiceCard';
+import { getServices } from '../api/services.api';
 import serviceMattersImg from '../assets/service-matters.png';
 import './Services.css';
 
-const SERVICES_DATA = [
-  {
-    id: 'general-service',
-    name: 'General Car Service',
-    category: 'Maintenance',
-    startingPrice: '₹999',
-    duration: '2–3 hours',
-    description: 'Complete vehicle inspection and routine maintenance to keep your car running smoothly.',
-    icon: Wrench,
-  },
-  {
-    id: 'oil-change',
-    name: 'Oil Change',
-    category: 'Maintenance',
-    startingPrice: '₹799',
-    duration: '45–60 minutes',
-    description: 'Replace old engine oil and keep your engine lubricated for better performance.',
-    icon: Droplets,
-  },
-  {
-    id: 'brake-service',
-    name: 'Brake Service',
-    category: 'Repair',
-    startingPrice: '₹1,499',
-    duration: '1–2 hours',
-    description: 'Professional brake inspection, maintenance and replacement of worn components.',
-    icon: Disc,
-  },
-  {
-    id: 'engine-repair',
-    name: 'Engine Repair',
-    category: 'Repair',
-    startingPrice: '₹2,999',
-    duration: '3–6 hours',
-    description: 'Professional engine diagnostics and repair for improved vehicle performance.',
-    icon: Cpu,
-  },
-  {
-    id: 'ac-service',
-    name: 'AC Service',
-    category: 'Maintenance',
-    startingPrice: '₹1,299',
-    duration: '1–2 hours',
-    description: "Vehicle AC inspection, cleaning and maintenance for comfortable driving.",
-    icon: Wind,
-  },
-  {
-    id: 'battery-replacement',
-    name: 'Battery Replacement',
-    category: 'Maintenance',
-    startingPrice: '₹3,999',
-    duration: '30–45 minutes',
-    description: 'Battery testing and replacement using suitable batteries for your vehicle.',
-    icon: Zap,
-  },
-  {
-    id: 'wheel-alignment',
-    name: 'Wheel Alignment',
-    category: 'Maintenance',
-    startingPrice: '₹699',
-    duration: '30–45 minutes',
-    description: 'Correct wheel alignment to improve handling, stability and tyre life.',
-    icon: Compass,
-  },
-  {
-    id: 'tyre-service',
-    name: 'Tyre Service',
-    category: 'Maintenance',
-    startingPrice: '₹499',
-    duration: '30–60 minutes',
-    description: 'Tyre inspection, rotation and maintenance for safer driving.',
-    icon: CircleDot,
-  },
-  {
-    id: 'car-diagnostics',
-    name: 'Car Diagnostics',
-    category: 'Diagnostics',
-    startingPrice: '₹599',
-    duration: '30–60 minutes',
-    description: 'Identify vehicle issues using professional diagnostic equipment.',
-    icon: Gauge,
-  },
-  {
-    id: 'suspension-repair',
-    name: 'Suspension Repair',
-    category: 'Repair',
-    startingPrice: '₹1,999',
-    duration: '2–4 hours',
-    description: 'Inspection and repair of suspension components for a smoother ride.',
-    icon: Sliders,
-  },
-  {
-    id: 'dent-and-paint',
-    name: 'Dent & Paint',
-    category: 'Body & Detailing',
-    startingPrice: '₹2,499',
-    duration: '1–3 days',
-    description: 'Professional dent removal and paint restoration for your vehicle.',
-    icon: Sparkles,
-  },
-  {
-    id: 'car-detailing',
-    name: 'Car Detailing',
-    category: 'Body & Detailing',
-    startingPrice: '₹1,499',
-    duration: '2–4 hours',
-    description: "Deep cleaning and detailing to restore your car's interior and exterior appearance.",
-    icon: ShieldCheck,
-  },
-];
+// Icon mapping helper for service categories/names
+const getServiceIcon = (category, name = '') => {
+  const lowerName = name.toLowerCase();
+  const lowerCat = category ? category.toLowerCase() : '';
 
-const CATEGORIES = ['All Services', 'Maintenance', 'Repair', 'Diagnostics', 'Body & Detailing'];
+  if (lowerName.includes('oil')) return Droplets;
+  if (lowerName.includes('brake')) return Disc;
+  if (lowerName.includes('engine') || lowerName.includes('tuning')) return Cpu;
+  if (lowerName.includes('ac') || lowerName.includes('air')) return Wind;
+  if (lowerName.includes('battery') || lowerName.includes('electric')) return Zap;
+  if (lowerName.includes('alignment') || lowerName.includes('wheel')) return Compass;
+  if (lowerName.includes('tyre') || lowerName.includes('tire')) return CircleDot;
+  if (lowerName.includes('diagnostic')) return Gauge;
+  if (lowerName.includes('suspension')) return Sliders;
+  if (lowerName.includes('dent') || lowerName.includes('paint')) return Sparkles;
+  if (lowerName.includes('detail') || lowerName.includes('wash')) return ShieldCheck;
+
+  if (lowerCat.includes('repair')) return Cpu;
+  if (lowerCat.includes('diagnostic')) return Gauge;
+  if (lowerCat.includes('detail') || lowerCat.includes('body')) return ShieldCheck;
+
+  return Wrench;
+};
 
 export default function Services() {
+  const [services, setServices] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState('All Services');
   const [selectedService, setSelectedService] = useState(null);
 
-  const filteredServices =
-    activeCategory === 'All Services'
-      ? SERVICES_DATA
-      : SERVICES_DATA.filter((s) => s.category === activeCategory);
+  const fetchServicesData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await getServices();
+      const rawData = response.data || response;
+      const apiList = Array.isArray(rawData) ? rawData : [];
+      setServices(apiList);
+    } catch (err) {
+      console.error('Error fetching services:', err.message);
+      setError(err.data?.message || err.message || 'Failed to load services. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchServicesData();
+  }, []);
+
+  // Compute dynamic category filter list
+  const categoriesList = ['All Services'];
+  services.forEach((s) => {
+    if (s.category && !categoriesList.includes(s.category)) {
+      categoriesList.push(s.category);
+    }
+  });
+
+  // Filter services by selected category and search term
+  const filteredServices = services.filter((s) => {
+    const matchesCategory = activeCategory === 'All Services' || s.category === activeCategory;
+    const term = searchTerm.trim().toLowerCase();
+    const matchesSearch =
+      !term ||
+      (s.name || '').toLowerCase().includes(term) ||
+      (s.description || '').toLowerCase().includes(term);
+    return matchesCategory && matchesSearch;
+  });
 
   const handleViewService = (service) => {
     setSelectedService(service);
-    // Modal or highlight state if needed
   };
 
   return (
@@ -165,10 +116,36 @@ export default function Services() {
         </p>
       </section>
 
-      {/* SECTION 2 — SERVICE CATEGORY FILTER */}
-      <section className="filter-container">
+      {/* SECTION 2 — SERVICE CATEGORY FILTER & SEARCH */}
+      <section className="filter-container" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div className="input-with-icon" style={{ flex: '1', minWidth: '260px' }}>
+            <Search size={18} className="input-icon" />
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Search services by name or description (e.g. Oil, Brake, Diagnostic)..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          {(searchTerm || activeCategory !== 'All Services') && (
+            <button
+              type="button"
+              className="btn-card-secondary"
+              onClick={() => {
+                setSearchTerm('');
+                setActiveCategory('All Services');
+              }}
+              style={{ padding: '0.65rem 1rem', fontSize: '0.85rem' }}
+            >
+              Clear Filters
+            </button>
+          )}
+        </div>
+
         <div className="filter-bar">
-          {CATEGORIES.map((cat) => (
+          {categoriesList.map((cat) => (
             <button
               key={cat}
               className={`filter-btn ${activeCategory === cat ? 'active' : ''}`}
@@ -182,12 +159,39 @@ export default function Services() {
 
       {/* SECTION 3 & 5 — SERVICE CARDS GRID */}
       <section className="services-grid-container">
-        {filteredServices.length > 0 ? (
-          filteredServices.map((service) => (
-            <ServiceCard key={service.id} service={service} onView={handleViewService} />
-          ))
+        {loading ? (
+          <div style={{ padding: '4rem 2rem', textAlign: 'center', width: '100%', gridColumn: '1 / -1' }}>
+            <Loader2 size={36} className="spinning-loader" style={{ animation: 'spin 1s linear infinite', color: 'var(--primary-accent)' }} />
+            <p style={{ marginTop: '1rem', color: 'var(--text-secondary)' }}>Loading services...</p>
+          </div>
+        ) : error ? (
+          <div style={{ padding: '3rem 2rem', textAlign: 'center', width: '100%', gridColumn: '1 / -1' }}>
+            <AlertCircle size={36} style={{ color: '#ef4444', marginBottom: '0.8rem' }} />
+            <h3 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem' }}>Failed to Load Services</h3>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '1.2rem' }}>{error}</p>
+            <button type="button" className="btn-card-primary" onClick={fetchServicesData}>
+              Try Again
+            </button>
+          </div>
+        ) : filteredServices.length > 0 ? (
+          filteredServices.map((service) => {
+            const normalized = {
+              id: service._id || service.id,
+              name: service.name,
+              category: service.category || 'General Service',
+              startingPrice: typeof service.price === 'number' ? `₹${service.price}` : service.startingPrice || '₹0',
+              duration: typeof service.duration === 'number' ? `${service.duration} mins` : service.duration || 'N/A',
+              description: service.description || 'Professional car service by certified mechanics.',
+              icon: getServiceIcon(service.category, service.name),
+            };
+            return (
+              <ServiceCard key={normalized.id} service={normalized} onView={handleViewService} />
+            );
+          })
         ) : (
-          <div className="no-services-found">No services found in this category.</div>
+          <div className="no-services-found" style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem' }}>
+            No services found matching your search.
+          </div>
         )}
       </section>
 
